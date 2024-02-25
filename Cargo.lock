@@ -698,6 +698,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "imgapp"
+version = "0.1.0"
+dependencies = [
+ "actix-files",
+ "actix-web",
+ "dotenv",
+ "dunce",
+ "env_logger",
+ "home",
+ "log",
+ "serde",
+ "sha2",
+]
+
+[[package]]
 name = "indexmap"
 version = "2.2.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1294,21 +1309,6 @@ name = "wasi"
 version = "0.11.0+wasi-snapshot-preview1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9c8d87e72b64a3b4db28d11ce29237c246188f4f51057d65a7eab63b7987e423"
-
-[[package]]
-name = "website_test"
-version = "0.1.0"
-dependencies = [
- "actix-files",
- "actix-web",
- "dotenv",
- "dunce",
- "env_logger",
- "home",
- "log",
- "serde",
- "sha2",
-]
 
 [[package]]
 name = "windows-sys"
