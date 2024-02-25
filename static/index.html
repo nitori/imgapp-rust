@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <title>Image Viewer</title>
+    <meta charset="utf-8">
+    <link rel="apple-touch-icon" sizes="180x180" href="/static/favicon/apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="/static/favicon/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/static/favicon/favicon-16x16.png">
+    <link rel="manifest" href="/static/favicon/site.webmanifest">
+    <link rel="mask-icon" href="/static/favicon/safari-pinned-tab.svg" color="#5bbad5">
+    <link rel="shortcut icon" href="/static/favicon/favicon.ico">
+    <meta name="msapplication-TileColor" content="#da532c">
+    <meta name="msapplication-config" content="/static/favicon/browserconfig.xml">
+    <meta name="theme-color" content="#ffffff">
+    <link rel="stylesheet" href="/static/css/main.css">
+</head>
+<body>
+
+<div id="main">
+    <div id="left">
+        <div id="path"></div>
+        <div id="shortcuts-meta">
+            <div id="shortcuts">
+                <div id="sorting-shortcuts">
+                    n: name<br>
+                    m: mtime<br>
+                    r: reverse<br>
+                    h: toggle hidden<br>
+                </div>
+                f: full screen
+            </div>
+            <div id="meta"></div>
+        </div>
+        <div id="favs-folders">
+            <div id="favs">
+                {{favs}}
+            </div>
+            <div id="folders"></div>
+        </div>
+        <div id="files"></div>
+    </div>
+    <div id="right">
+        <div id="image"></div>
+    </div>
+</div>
+
+<script type="module" src="/static/js/main.js"></script>
+</body>
+</html>

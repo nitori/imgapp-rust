@@ -1,0 +1,189 @@
+@import './normalize.css';
+
+:root {
+    --link-color: white;
+    --link-color-hover: #ccc;
+    --link-text-decoration: none;
+    --link-text-decoration-hover: underline;
+
+    --sidebar-width: 400px;
+    --favs-width: 25%;
+}
+
+*, *:before, *:after {
+    box-sizing: border-box;
+}
+
+body, html {
+    padding: 0;
+    margin: 0;
+    background: black;
+    color: white;
+    font-family: sans-serif;
+    font-size: 18px;
+    overflow: hidden;
+}
+
+a {
+    color: var(--link-color);
+    text-decoration: var(--link-text-decoration);
+}
+
+a:hover {
+    color: var(--link-color-hover);
+    text-decoration: var(--link-text-decoration-hover);
+}
+
+#main {
+    display: flex;
+    width: 100vw;
+    height: 100vh;
+}
+
+#left {
+    flex: 0 1 var(--sidebar-width);
+    max-width: var(--sidebar-width);
+    width: var(--sidebar-width);
+    height: 100vh;
+    white-space: nowrap;
+    font-size: 14px;
+    line-height: 1;
+}
+
+#path {
+    overflow: hidden;
+}
+
+#shortcuts-meta {
+    display: flex;
+}
+
+#shortcuts {
+    flex: 0 1 100px;
+    max-width: 100px;
+    width: 100px;
+    color: rgba(255, 255, 255, .7);
+    font-size: 12px;
+}
+
+#meta {
+    flex: 1 0 0;
+    display: flex;
+    justify-content: flex-end;
+    align-items: flex-end;
+    padding: 5px;
+}
+
+#favs-folders {
+    border-bottom: 1px;
+    height: calc(50vh - 14px - 60px);
+    display: flex;
+}
+
+#favs {
+    flex: 0 1 var(--favs-width);
+    max-width: var(--favs-width);
+    width: var(--favs-width);
+    height: 100%;
+    overflow: auto;
+}
+
+#folders {
+    flex: 1 0 0;
+    max-width: 100%;
+    height: 100%;
+    overflow: auto;
+    background: rgba(255, 255, 255, .1);
+}
+
+#files {
+    white-space: nowrap;
+    height: 50vh;
+    overflow: auto;
+}
+
+#folders, #files {
+    white-space: normal;
+    word-break: break-all;
+}
+
+#folders > div:nth-child(2n),
+#files > div:nth-child(2n) {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+#favs, #folders, #files {
+    /*padding: 5px;*/
+}
+
+#favs a,
+#folders a,
+#files a {
+    display: block;
+    padding: 5px 10px;
+}
+
+#favs::-webkit-scrollbar,
+#folders::-webkit-scrollbar,
+#files::-webkit-scrollbar {
+    width: 7px;
+    height: 7px;
+}
+
+#favs::-webkit-scrollbar-track,
+#folders::-webkit-scrollbar-track,
+#files::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, .1);
+}
+
+#favs::-webkit-scrollbar-thumb,
+#folders::-webkit-scrollbar-thumb,
+#files::-webkit-scrollbar-thumb {
+    background: #888;
+}
+
+#favs::-webkit-scrollbar-thumb:hover,
+#folders::-webkit-scrollbar-thumb:hover,
+#files::-webkit-scrollbar-thumb:hover {
+    background: #876565;
+}
+
+
+#right {
+    flex: 1 0 0;
+    max-width: 100%;
+    height: 100vh;
+}
+
+#image .media-item {
+    display: block;
+    width: 100%;
+    height: 100vh;
+    object-fit: scale-down;
+    object-position: center;
+}
+
+#image.object-fit-cover .media-item {
+    object-fit: cover;
+}
+#image.object-fit-none .media-item {
+    object-fit: none;
+}
+
+.fullscreen #image.hide-cursor {
+    cursor: none;
+}
+
+.active {
+    color: red;
+    --link-color: red;
+    --link-color-hover: red;
+}
+
+a.active {
+    background: rgba(255, 0, 0, .05);
+}
+
+.previous {
+    background: rgba(255, 0, 0, .2);
+}
