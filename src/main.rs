@@ -5,9 +5,10 @@ use home;
 use actix_files;
 use actix_web::{get, web, App, HttpServer, Responder, Result, middleware::Logger, HttpResponse};
 use actix_web::http::header::ContentType;
+use dotenv::dotenv;
 use serde::Serialize;
 use serde::Deserialize;
-use log::warn;
+use log::{info, warn};
 use sha2::{Sha256, Digest};
 
 #[derive(Serialize)]
@@ -143,6 +144,22 @@ fn normalize_path(path: PathBuf) -> String {
     normalized_path
 }
 
+fn check_tilde(path: PathBuf) -> PathBuf {
+    if path.starts_with("~\\") {
+        let Some(homedir) = home::home_dir() else {
+            return path.clone();
+        };
+
+        let Ok(stripped_path) = path.strip_prefix("~\\") else {
+            return path.clone();
+        };
+
+        homedir.join(stripped_path)
+    } else {
+        path.clone()
+    }
+}
+
 #[get("/")]
 async fn get_index() -> Result<impl Responder> {
     let drives = listdrives();
@@ -156,11 +173,30 @@ async fn get_index() -> Result<impl Responder> {
         favs_html.push_str(&tmp);
     }
 
-    let tmp = create_fav_html(
-        "Random".into(),
-        PathBuf::from("C:\\Users\\chaoz\\Pictures\\Random"),
-    );
-    favs_html.push_str(&tmp);
+    let fav_folders_env = env::var("FAV_FOLDERS").unwrap_or("".into());
+    info!("found configured fav folders:");
+
+    let parts = fav_folders_env.split(";");
+    for fav_folder in parts {
+        info!(" - {}", fav_folder);
+
+        let fav_path = check_tilde(PathBuf::from(fav_folder));
+
+        let Some(fav_name) = fav_path.file_name() else {
+            continue;
+        };
+
+        if !fav_path.exists() {
+            warn!("   `- Path doesn't exist!");
+            continue;
+        }
+
+        let tmp = create_fav_html(
+            fav_name.to_string_lossy().into(),
+            fav_path,
+        );
+        favs_html.push_str(&tmp);
+    }
 
     html = html.replace("{{favs}}", &favs_html);
 
@@ -254,6 +290,7 @@ async fn get_folder_hash(path: web::Query<PathQuery>) -> Result<impl Responder> 
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
+    dotenv().ok();
     env_logger::init();
 
     HttpServer::new(move || {
