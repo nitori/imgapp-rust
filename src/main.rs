@@ -127,11 +127,20 @@ fn escape(s: String) -> String {
     new_s
 }
 
-fn create_fav_html(name: String, path: String) -> String {
+fn create_fav_html(name: String, path: PathBuf) -> String {
     format!(
         "<div><a href=\"{0}\" title=\"{1}\" data-folder=\"{0}\">{1}</a></div>",
-        escape(path), escape(name)
+        escape(normalize_path(path)), escape(name)
     )
+}
+
+fn normalize_path(path: PathBuf) -> String {
+    let Ok(fixed_path) = dunce::canonicalize(path.clone()) else {
+        return path.to_string_lossy().into();
+    };
+    let mut normalized_path: String = fixed_path.to_string_lossy().into();
+    normalized_path = normalized_path.replace("\\", "/");
+    normalized_path
 }
 
 #[get("/")]
@@ -143,13 +152,13 @@ async fn get_index() -> Result<impl Responder> {
     // replace {{favs}} marker with drives and favourites
     let mut favs_html = String::new();
     for drive in drives {
-        let tmp = create_fav_html(drive.clone(), drive.clone());
+        let tmp = create_fav_html(drive.clone(), PathBuf::from(&drive));
         favs_html.push_str(&tmp);
     }
 
     let tmp = create_fav_html(
         "Random".into(),
-        "C:\\Users\\chaoz\\Pictures\\Random".into(),
+        PathBuf::from("C:\\Users\\chaoz\\Pictures\\Random"),
     );
     favs_html.push_str(&tmp);
 
@@ -173,7 +182,7 @@ async fn get_folder_list(path: web::Query<PathQuery>) -> Result<impl Responder> 
 
     let mut folders: Vec<FolderEntry> = vec![FolderEntry {
         name: "..".into(),
-        path: parent.to_string_lossy().into(),
+        path: normalize_path(parent),
         symlink: false,
     }];
 
@@ -193,7 +202,7 @@ async fn get_folder_list(path: web::Query<PathQuery>) -> Result<impl Responder> 
 
             if meta.is_dir() {
                 folders.push(FolderEntry {
-                    path: direntry.path().to_string_lossy().into(),
+                    path: normalize_path(direntry.path()),
                     name: direntry.file_name().to_string_lossy().into(),
                     symlink: meta.is_symlink(),
                 })
@@ -212,7 +221,7 @@ async fn get_folder_list(path: web::Query<PathQuery>) -> Result<impl Responder> 
                 }
 
                 files.push(FileEntry {
-                    path: direntry.path().to_string_lossy().into(),
+                    path: normalize_path(direntry.path()),
                     name: direntry.file_name().to_string_lossy().into(),
                     mtime,
                     symlink: meta.is_symlink(),
@@ -222,7 +231,7 @@ async fn get_folder_list(path: web::Query<PathQuery>) -> Result<impl Responder> 
     }
 
     let folder_list = FolderList {
-        canonical_path: canonical_path.to_string_lossy().into(),
+        canonical_path: normalize_path(canonical_path),
         folders,
         files,
         hash: "uiaeuiaeuiae".to_owned(),
