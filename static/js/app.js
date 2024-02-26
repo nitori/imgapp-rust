@@ -509,7 +509,7 @@ export default class App {
                 this.changeSort('mtime', this.state.sortOrder);
                 this._listRebuildRequired = true;
                 this._render();
-            } else if (ev.key === 'b') {
+            } else if (ev.key === 'z') {
                 ev.preventDefault();
                 if (this.$imageHolder.hasClass('object-fit-cover')) {
                     this.$imageHolder.removeClass('object-fit-cover');
