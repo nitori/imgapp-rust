@@ -303,7 +303,7 @@ async fn main() -> std::io::Result<()> {
             .service(get_file)
             .service(get_folder_hash)
     })
-        .bind(("127.0.0.1", 8080))?
+        .bind(("127.0.0.1", 5000))?
         .run()
         .await
 }
