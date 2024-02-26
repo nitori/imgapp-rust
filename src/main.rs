@@ -267,11 +267,13 @@ async fn get_folder_list(path: web::Query<PathQuery>) -> Result<impl Responder> 
         }
     }
 
+    let hash = calculate_folder_hash(canonical_path.clone())?;
+
     let folder_list = FolderList {
         canonical_path: normalize_path(canonical_path),
         folders,
         files,
-        hash: "uiaeuiaeuiae".to_owned(),
+        hash,
     };
     Ok(web::Json(folder_list))
 }
