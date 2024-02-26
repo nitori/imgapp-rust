@@ -145,18 +145,19 @@ fn normalize_path(path: PathBuf) -> String {
 }
 
 fn check_tilde(path: PathBuf) -> PathBuf {
-    if path.starts_with("~\\") {
+    let tmp_path: PathBuf = normalize_path(path).into();
+    if tmp_path.starts_with("~/") {
         let Some(homedir) = home::home_dir() else {
-            return path.clone();
+            return tmp_path.into();
         };
 
-        let Ok(stripped_path) = path.strip_prefix("~\\") else {
-            return path.clone();
+        let Ok(stripped_path) = tmp_path.strip_prefix("~/") else {
+            return tmp_path;
         };
 
         homedir.join(stripped_path)
     } else {
-        path.clone()
+        tmp_path
     }
 }
 
