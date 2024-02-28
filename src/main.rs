@@ -38,9 +38,16 @@ impl error::ResponseError for HttpError {
 
     fn error_response(&self) -> HttpResponse {
         HttpResponse::build(self.status_code())
-            .insert_header(ContentType::html())
-            .body(self.to_string())
+            .insert_header(ContentType::json())
+            .json(ErrorResponse {
+                error: self.to_string(),
+            })
     }
+}
+
+#[derive(Serialize)]
+struct ErrorResponse {
+    error: String,
 }
 
 #[derive(Serialize)]
