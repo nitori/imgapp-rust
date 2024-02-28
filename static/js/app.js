@@ -164,7 +164,7 @@ export default class App {
         this.state.currentPath = data.canonical_path;
         this.state.folders = data.folders;
         this.state.files = data.files;
-        this.state.folderHash = data.hash;
+        this.state.folderHash = data.hash.hash;
         this._resort();
 
         if (this.state.files.length > 0) {

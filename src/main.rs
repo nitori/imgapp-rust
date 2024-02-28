@@ -1,15 +1,47 @@
 use std::{fs, env};
 use std::path::PathBuf;
-use std::time::{UNIX_EPOCH};
+use std::time::{Duration, Instant, UNIX_EPOCH};
 use home;
 use actix_files;
-use actix_web::{get, web, App, HttpServer, Responder, Result, middleware::Logger, HttpResponse};
-use actix_web::http::header::ContentType;
+use actix_web::{
+    get, web, App, error,
+    HttpServer, Responder, Result,
+    middleware::Logger,
+    HttpResponse,
+    http::{header::ContentType, StatusCode},
+};
 use dotenv::dotenv;
 use serde::Serialize;
 use serde::Deserialize;
 use log::{info, warn};
 use sha2::{Sha256, Digest};
+use derive_more::{Display, Error};
+
+#[derive(Debug, Display, Error)]
+enum HttpError {
+    #[display(fmt = "Internal Server Error")]
+    InternalServerError,
+    #[display(fmt = "Not Found")]
+    NotFound,
+    #[display(fmt = "Bad Request")]
+    BadRequest,
+}
+
+impl error::ResponseError for HttpError {
+    fn status_code(&self) -> StatusCode {
+        match *self {
+            HttpError::InternalServerError => StatusCode::INTERNAL_SERVER_ERROR,
+            HttpError::NotFound => StatusCode::NOT_FOUND,
+            HttpError::BadRequest => StatusCode::BAD_REQUEST,
+        }
+    }
+
+    fn error_response(&self) -> HttpResponse {
+        HttpResponse::build(self.status_code())
+            .insert_header(ContentType::html())
+            .body(self.to_string())
+    }
+}
 
 #[derive(Serialize)]
 struct FolderEntry {
@@ -27,16 +59,17 @@ struct FileEntry {
 }
 
 #[derive(Serialize)]
+struct FolderHash {
+    hash: String,
+    duration: Duration,
+}
+
+#[derive(Serialize)]
 struct FolderList {
     canonical_path: String,
     folders: Vec<FolderEntry>,
     files: Vec<FileEntry>,
-    hash: String,
-}
-
-#[derive(Serialize)]
-struct FolderHash {
-    hash: String,
+    hash: FolderHash,
 }
 
 #[derive(Deserialize)]
@@ -86,11 +119,15 @@ fn resolve_path(path: &String) -> PathBuf {
     if path.is_empty() {
         default_path()
     } else {
-        PathBuf::from(path).canonicalize().unwrap_or_else(|_| default_path())
+        let Ok(result) = PathBuf::from(path).canonicalize() else {
+            return default_path();
+        };
+        result
     }
 }
 
-fn calculate_folder_hash(path: PathBuf) -> Result<String> {
+fn calculate_folder_hash(path: PathBuf) -> Result<(String, Duration)> {
+    let start = Instant::now();
     let mut names: Vec<String> = vec![];
 
     let readdir = fs::read_dir(path)?;
@@ -116,7 +153,7 @@ fn calculate_folder_hash(path: PathBuf) -> Result<String> {
     let result = hasher.finalize().to_vec();
     let r2: Vec<_> = result.iter().map(|v| format!("{:02x}", v)).collect();
 
-    Ok(r2.join(""))
+    Ok((r2.join(""), start.elapsed()))
 }
 
 fn escape(s: String) -> String {
@@ -131,21 +168,29 @@ fn escape(s: String) -> String {
 fn create_fav_html(name: String, path: PathBuf) -> String {
     format!(
         "<div><a href=\"{0}\" title=\"{1}\" data-folder=\"{0}\">{1}</a></div>",
-        escape(normalize_path(path)), escape(name)
+        escape(normalize_path(path).0), escape(name)
     )
 }
 
-fn normalize_path(path: PathBuf) -> String {
-    let Ok(fixed_path) = dunce::canonicalize(path.clone()) else {
-        return path.to_string_lossy().into();
+fn normalize_path(path: PathBuf) -> (String, PathBuf) {
+    let canon_path = match path.canonicalize() {
+        Ok(p) => p,
+        Err(_) => path.clone(),
     };
-    let mut normalized_path: String = fixed_path.to_string_lossy().into();
+
+    let mut normalized_path: String = path.to_string_lossy().into();
     normalized_path = normalized_path.replace("\\", "/");
-    normalized_path
+
+    // i don't care anymore
+    if (env::consts::OS == "windows") && normalized_path.starts_with("//?/") {
+        normalized_path = normalized_path[4..].to_string();
+    }
+
+    (normalized_path, canon_path)
 }
 
 fn check_tilde(path: PathBuf) -> PathBuf {
-    let tmp_path: PathBuf = normalize_path(path).into();
+    let tmp_path: PathBuf = normalize_path(path).0.into();
     if tmp_path.starts_with("~/") {
         let Some(homedir) = home::home_dir() else {
             return tmp_path.into();
@@ -162,10 +207,13 @@ fn check_tilde(path: PathBuf) -> PathBuf {
 }
 
 #[get("/")]
-async fn get_index() -> Result<impl Responder> {
+async fn get_index() -> Result<impl Responder, HttpError> {
     let drives = listdrives();
 
-    let mut html = fs::read_to_string("./static/index.html")?;
+    let Ok(mut html) = fs::read_to_string("./static/index.html") else {
+        warn!("Could not read index.html");
+        return Err(HttpError::InternalServerError);
+    };
 
     // replace {{favs}} marker with drives and favourites
     let mut favs_html = String::new();
@@ -209,38 +257,58 @@ async fn get_index() -> Result<impl Responder> {
 }
 
 #[get("/list")]
-async fn get_folder_list(path: web::Query<PathQuery>) -> Result<impl Responder> {
-    let canonical_path = resolve_path(&path.path);
+async fn get_folder_list(path: web::Query<PathQuery>) -> Result<impl Responder, HttpError> {
+    let input_path = PathBuf::from(&path.path);
+    let (normalized_path, canonical_path) = normalize_path(input_path.clone());
 
-    let parent = match canonical_path.parent() {
+    // canonical_path is only used to test if the folder exists
+    let Ok(current_meta) = canonical_path.metadata() else {
+        return Err(HttpError::NotFound);
+    };
+    if !canonical_path.exists() || !current_meta.is_dir() {
+        return Err(HttpError::NotFound);
+    }
+
+    let parent = match input_path.parent() {
         Some(path) => path.to_path_buf(),
-        None => canonical_path.clone(),
+        None => input_path.clone(),
     };
 
     let mut folders: Vec<FolderEntry> = vec![FolderEntry {
         name: "..".into(),
-        path: normalize_path(parent),
+        path: normalize_path(parent).0,
         symlink: false,
     }];
 
     let mut files: Vec<FileEntry> = vec![];
 
     {
-        let paths = fs::read_dir(canonical_path.clone())?;
+        let Ok(paths) = fs::read_dir(input_path.clone()) else {
+            return Err(HttpError::NotFound);
+        };
         for path in paths {
             let Ok(direntry) = path else {
                 warn!("Could not unwrap path");
+                continue;
+            };
+            let Ok(canon_path) = direntry.path().canonicalize() else {
+                warn!("Could not canonicalize path.");
                 continue;
             };
             let Ok(meta) = direntry.metadata() else {
                 warn!("Could not get direntry metadata.");
                 continue;
             };
+            let Ok(meta_canon) = canon_path.metadata() else {
+                warn!("Could not get direntry metadata of resolved path.");
+                continue;
+            };
 
-            if meta.is_dir() {
+            let entry_name: String = direntry.file_name().to_string_lossy().into();
+            if meta_canon.is_dir() {
                 folders.push(FolderEntry {
-                    path: normalize_path(direntry.path()),
-                    name: direntry.file_name().to_string_lossy().into(),
+                    path: normalize_path(direntry.path()).0,
+                    name: entry_name,
                     symlink: meta.is_symlink(),
                 })
             } else {
@@ -252,14 +320,14 @@ async fn get_folder_list(path: web::Query<PathQuery>) -> Result<impl Responder> 
                     Err(_) => 0.0
                 };
 
-                let lowercase: String = direntry.file_name().to_ascii_lowercase().to_string_lossy().into();
+                let lowercase: String = entry_name.to_ascii_lowercase();
                 if EXTENSIONS.iter().all(|v| !lowercase.ends_with(v)) {
                     continue;
                 }
 
                 files.push(FileEntry {
-                    path: normalize_path(direntry.path()),
-                    name: direntry.file_name().to_string_lossy().into(),
+                    path: normalize_path(direntry.path()).0,
+                    name: entry_name,
                     mtime,
                     symlink: meta.is_symlink(),
                 });
@@ -267,28 +335,40 @@ async fn get_folder_list(path: web::Query<PathQuery>) -> Result<impl Responder> 
         }
     }
 
-    let hash = calculate_folder_hash(canonical_path.clone())?;
+    let Ok((hash, duration)) = calculate_folder_hash(input_path.clone()) else {
+        warn!("Could not calculate folder hash.");
+        return Err(HttpError::InternalServerError);
+    };
 
     let folder_list = FolderList {
-        canonical_path: normalize_path(canonical_path),
+        canonical_path: normalized_path,
         folders,
         files,
-        hash,
+        hash: FolderHash { hash, duration },
     };
     Ok(web::Json(folder_list))
 }
 
 #[get("/get-file")]
-async fn get_file(path: web::Query<PathQuery>) -> Result<actix_files::NamedFile> {
+async fn get_file(path: web::Query<PathQuery>) -> Result<actix_files::NamedFile, HttpError> {
     let canonical_path = resolve_path(&path.path);
-    Ok(actix_files::NamedFile::open(canonical_path.to_str().unwrap())?)
+    if !canonical_path.exists() {
+        return Err(HttpError::NotFound);
+    }
+    let Ok(file) = actix_files::NamedFile::open(canonical_path) else {
+        return Err(HttpError::BadRequest);
+    };
+    Ok(file)
 }
 
 #[get("/folder-hash")]
-async fn get_folder_hash(path: web::Query<PathQuery>) -> Result<impl Responder> {
+async fn get_folder_hash(path: web::Query<PathQuery>) -> Result<impl Responder, HttpError> {
     let canonical_path = resolve_path(&path.path);
-    let hash = calculate_folder_hash(canonical_path)?;
-    Ok(web::Json(FolderHash { hash }))
+    let Ok((hash, duration)) = calculate_folder_hash(canonical_path) else {
+        warn!("Could not calculate folder hash.");
+        return Err(HttpError::InternalServerError);
+    };
+    Ok(web::Json(FolderHash { hash, duration }))
 }
 
 #[actix_web::main]
