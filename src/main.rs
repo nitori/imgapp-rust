@@ -122,17 +122,6 @@ fn default_path() -> PathBuf {
     }
 }
 
-fn resolve_path(path: &String) -> PathBuf {
-    if path.is_empty() {
-        default_path()
-    } else {
-        let Ok(result) = PathBuf::from(path).canonicalize() else {
-            return default_path();
-        };
-        result
-    }
-}
-
 fn calculate_folder_hash(path: PathBuf) -> Result<(String, Duration)> {
     let start = Instant::now();
     let mut names: Vec<String> = vec![];
@@ -265,7 +254,12 @@ async fn get_index() -> Result<impl Responder, HttpError> {
 
 #[get("/list")]
 async fn get_folder_list(path: web::Query<PathQuery>) -> Result<impl Responder, HttpError> {
-    let input_path = PathBuf::from(&path.path);
+    let input_path = if path.path.is_empty() {
+        default_path()
+    } else {
+        PathBuf::from(&path.path)
+    };
+
     let (normalized_path, canonical_path) = normalize_path(input_path.clone());
 
     // canonical_path is only used to test if the folder exists
@@ -358,23 +352,39 @@ async fn get_folder_list(path: web::Query<PathQuery>) -> Result<impl Responder, 
 
 #[get("/get-file")]
 async fn get_file(path: web::Query<PathQuery>) -> Result<actix_files::NamedFile, HttpError> {
-    let canonical_path = resolve_path(&path.path);
+    let (_, canonical_path) = normalize_path(PathBuf::from(&path.path));
     if !canonical_path.exists() {
         return Err(HttpError::NotFound);
     }
-    let Ok(file) = actix_files::NamedFile::open(canonical_path) else {
+    let Ok(meta) = canonical_path.metadata() else {
+        return Err(HttpError::NotFound);
+    };
+    if !meta.is_file() {
         return Err(HttpError::BadRequest);
+    }
+    let Ok(file) = actix_files::NamedFile::open(canonical_path) else {
+        return Err(HttpError::InternalServerError);
     };
     Ok(file)
 }
 
 #[get("/folder-hash")]
 async fn get_folder_hash(path: web::Query<PathQuery>) -> Result<impl Responder, HttpError> {
-    let canonical_path = resolve_path(&path.path);
+    let (_, canonical_path) = normalize_path(PathBuf::from(&path.path));
+    if !canonical_path.exists() {
+        return Err(HttpError::NotFound);
+    }
+    let Ok(meta) = canonical_path.metadata() else {
+        return Err(HttpError::NotFound);
+    };
+    if !meta.is_dir() {
+        return Err(HttpError::BadRequest);
+    }
     let Ok((hash, duration)) = calculate_folder_hash(canonical_path) else {
         warn!("Could not calculate folder hash.");
         return Err(HttpError::InternalServerError);
     };
+
     Ok(web::Json(FolderHash { hash, duration }))
 }
 
