@@ -84,7 +84,7 @@ struct PathQuery {
     path: String,
 }
 
-const EXTENSIONS: [&'static str; 8] = [
+const EXTENSIONS: [&'static str; 9] = [
     ".jpg",
     ".jpeg",
     ".png",
@@ -93,6 +93,7 @@ const EXTENSIONS: [&'static str; 8] = [
     ".webp",
     ".webm",
     ".mp4",
+    ".mkv",
 ];
 
 

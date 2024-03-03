@@ -300,7 +300,7 @@ export default class App {
         this.$imageHolder.empty();
         let $media;
 
-        if (this.state.currentFile.match(/\.(mp4|webm)$/)) {
+        if (this.state.currentFile.match(/\.(mp4|webm|mkv)$/)) {
             $media = $(this._getVideo(this.state.currentFile));
         } else {
             $media = $(this._getImage(this.state.currentFile));
@@ -387,10 +387,10 @@ export default class App {
         }
         let nextIndex = Math.min(this.state.files.length - 1, this._fileIndex + 1);
         let prevIndex = Math.max(0, this._fileIndex - 1);
-        if (!this.state.files[nextIndex].path.match(/\.(mp4|webm)$/)) {
+        if (!this.state.files[nextIndex].path.match(/\.(mp4|webm|mkv)$/)) {
             this._getImage(this.state.files[nextIndex].path);
         }
-        if (!this.state.files[prevIndex].path.match(/\.(mp4|webm)$/)) {
+        if (!this.state.files[prevIndex].path.match(/\.(mp4|webm|mkv)$/)) {
             this._getImage(this.state.files[prevIndex].path);
         }
     }
