@@ -189,6 +189,7 @@ export default class App {
         this.state.currentFile = this.state.files[this._fileIndex].path;
         this.save();
         this._render();
+        this.setObjectPosition(0, 0);
     }
 
     prevFile() {
@@ -582,7 +583,9 @@ export default class App {
             y = 50;
         }
         const $mediaItem = this.$imageHolder.find('.media-item');
-        $mediaItem.css('object-position', `${x}% ${y}%`);
+        if (this._isMediaBigger()) {
+            $mediaItem.css('object-position', `${x}% ${y}%`);
+        }
     }
     
     _resolution() {
@@ -600,6 +603,16 @@ export default class App {
             return 'up';
         }
         return 'down';
+    }
+    
+    _isMediaBigger() {
+        if (this._isObjectFitCover() || this._isObjectFitNone()) {
+            let {width, height} = this._resolution();
+            let cWidth = this.$imageHolder.width();
+            let cHeight = this.$imageHolder.height();
+            return width > cWidth || height > cHeight;
+        }
+        return false;
     }
 
     _calcStep() {
