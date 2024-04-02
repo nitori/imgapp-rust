@@ -358,6 +358,12 @@ export default class App {
         } else {
             this._fileCache[file].ts = Date.now() / 1000.0;
         }
+
+        if (url.searchParams.get('path').endsWith('.gif')) {
+            url.searchParams.set('t', String(Date.now()));
+            this._fileCache[file].img.src = url.toString();
+        }
+
         return this._fileCache[file].img;
     }
 
