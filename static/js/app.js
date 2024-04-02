@@ -593,14 +593,14 @@ export default class App {
             $mediaItem.css('object-position', `${x}% ${y}%`);
         }
     }
-    
+
     _resolution() {
         const $mediaItem = this.$imageHolder.find('.media-item');
         const width = $mediaItem[0] && $mediaItem[0].naturalWidth || $mediaItem[0].videoWidth;
         const height = $mediaItem[0] && $mediaItem[0].naturalHeight || $mediaItem[0].videoHeight;
         return {width, height};
     }
-    
+
     _direction() {
         let {width, height} = this._resolution();
         let cWidth = this.$imageHolder.width();
@@ -610,7 +610,7 @@ export default class App {
         }
         return 'down';
     }
-    
+
     _isMediaBigger() {
         if (this._isObjectFitCover() || this._isObjectFitNone()) {
             let {width, height} = this._resolution();
@@ -641,7 +641,7 @@ export default class App {
     _isObjectFitCover() {
         return this.$imageHolder.hasClass('object-fit-cover');
     }
-    
+
     _isObjectFitNone() {
         return this.$imageHolder.hasClass('object-fit-none');
     }
