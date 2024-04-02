@@ -369,8 +369,8 @@ export default class App {
 
     _getResolution() {
         const $media = this.$imageHolder.find('.media-item');
-        let width = $media[0].naturalWidth || $media[0].videoWidth || 0;
-        let height = $media[0].naturalHeight || $media[0].videoHeight || 0;
+        let width = $media[0] && $media[0].naturalWidth || $media[0].videoWidth || 0;
+        let height = $media[0] && $media[0].naturalHeight || $media[0].videoHeight || 0;
         return {width, height};
     }
 
@@ -596,8 +596,8 @@ export default class App {
     
     _resolution() {
         const $mediaItem = this.$imageHolder.find('.media-item');
-        const width = $mediaItem[0].naturalWidth || $mediaItem[0].videoWidth;
-        const height = $mediaItem[0].naturalHeight || $mediaItem[0].videoHeight;
+        const width = $mediaItem[0] && $mediaItem[0].naturalWidth || $mediaItem[0].videoWidth;
+        const height = $mediaItem[0] && $mediaItem[0].naturalHeight || $mediaItem[0].videoHeight;
         return {width, height};
     }
     
