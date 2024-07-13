@@ -624,7 +624,8 @@ export default class App {
 
     _calcStep() {
         let {width, height} = this._resolution();
-        return Math.max(1, Math.min(50, width / height * 10));
+        let r = height > width ? width / height : height / width;
+        return Math.max(1, Math.min(50, r * 10));
     }
 
     moveMediaUp() {
