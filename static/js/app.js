@@ -115,6 +115,7 @@ export default class App {
 
     save() {
         localStorage.setItem('imageapp-state', JSON.stringify(this.state));
+        history.pushState('', {}, '#' + this.state.currentPath);
     }
 
     async _startPolling() {
